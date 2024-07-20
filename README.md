@@ -7,4 +7,5 @@ Microsevices to be use
 
     
 All these microservices will run on the DOCKER by using a single command
+
      "docker compose up -d --build"
