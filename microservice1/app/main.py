@@ -5,7 +5,7 @@ from app import settings
 from sqlmodel import Field, Session, SQLModel, create_engine, select, Sequence # type: ignore
 from fastapi import FastAPI, Depends # type: ignore
 from typing import AsyncGenerator
-
+from aiokafka import AIOKafkaConsumer,AIOKafkaProducer # type: ignore
 
 
 class Order(SQLModel):
@@ -15,6 +15,26 @@ class Order(SQLModel):
     product_name: str
     product_price: str
 
+async def consume_messages(topic, bootstrap_servers):
+    # Create a consumer instance.
+    consumer = AIOKafkaConsumer(
+        topic,
+        bootstrap_servers=bootstrap_servers,
+        group_id="my-todos-group",
+        auto_offset_reset='earliest'
+    )
+
+    # Start the consumer.
+    await consumer.start()
+    try:
+        # Continuously listen for messages.
+        async for message in consumer:
+            print(f"Received message: {message.value.decode()} on topic {message.topic}")
+            # Here you can add code to process each message.
+            # Example: parse the message, store it in a database, etc.
+    finally:
+        # Ensure to close the consumer when done.
+        await consumer.stop()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI)-> AsyncGenerator[None, None]:
@@ -36,4 +56,16 @@ app = FastAPI(lifespan=lifespan, title="Product service with kafka",
 @app.get("/")
 def read_product():
         return {"test":"product"}
+
+# Kafka Producer as a dependency
+async def get_kafka_producer():
+    producer = AIOKafkaProducer(bootstrap_servers='broker:19092')
+    await producer.start()
+    try:
+        yield producer
+    finally:
+        await producer.stop()
+
+
+
 
